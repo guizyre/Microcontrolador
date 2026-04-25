@@ -1,3 +1,4 @@
+// OBJETIVO DO CÓDIGO: Piscar um LED no pino PA6 com frequência de 4 Hz (Pulso de 100 ms LIGADO e 150 ms DESLIGADO).
 /* USER CODE BEGIN Header */
 /**
   ******************************************************************************
