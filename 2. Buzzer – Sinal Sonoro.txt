@@ -1,0 +1,384 @@
+2. Buzzer – Sinal Sonoro
+
+/* USER CODE BEGIN Header */
+/**
+  ******************************************************************************
+  * @file           : main.c
+  * @brief          : Main program body
+  ******************************************************************************
+  * @attention
+  *
+  * Copyright (c) 2026 STMicroelectronics.
+  * All rights reserved.
+  *
+  * This software is licensed under terms that can be found in the LICENSE file
+  * in the root directory of this software component.
+  * If no LICENSE file comes with this software, it is provided AS-IS.
+  *
+  ******************************************************************************
+  */
+/* USER CODE END Header */
+/* Includes ------------------------------------------------------------------*/
+#include "main.h"
+
+/* Private includes ----------------------------------------------------------*/
+/* USER CODE BEGIN Includes */
+#include "Utility.h"
+/* USER CODE END Includes */
+
+/* Private typedef -----------------------------------------------------------*/
+/* USER CODE BEGIN PTD */
+
+/* USER CODE END PTD */
+
+/* Private define ------------------------------------------------------------*/
+/* USER CODE BEGIN PD */
+
+/* USER CODE END PD */
+
+/* Private macro -------------------------------------------------------------*/
+/* USER CODE BEGIN PM */
+
+/* USER CODE END PM */
+
+/* Private variables ---------------------------------------------------------*/
+
+/* USER CODE BEGIN PV */
+
+/* USER CODE END PV */
+
+/* Private function prototypes -----------------------------------------------*/
+void SystemClock_Config(void);
+static void MX_GPIO_Init(void);
+/* USER CODE BEGIN PFP */
+
+/* USER CODE END PFP */
+
+/* Private user code ---------------------------------------------------------*/
+/* USER CODE BEGIN 0 */
+void atraso(int32_t tempo){
+	while(tempo) --tempo;
+}
+void atividade13_03(){
+	static int tempo = 0;
+
+	GPIO_Write_Pin(GPIOA,PIN_7,HIGH);
+	GPIO_Write_Pin(GPIOA,PIN_6,LOW);
+	Delay_us(10000-tempo);
+
+	GPIO_Write_Pin(GPIOA,PIN_6,HIGH);
+	GPIO_Write_Pin(GPIOA,PIN_7,LOW);
+	Delay_us(tempo);
+
+	tempo += 50;
+
+	if(tempo >= 10000){
+		while(1){
+			GPIO_Write_Pin(GPIOA,PIN_7,LOW);
+			GPIO_Write_Pin(GPIOA,PIN_6,HIGH);
+			Delay_us(tempo);
+
+			GPIO_Write_Pin(GPIOA,PIN_7,HIGH);
+			GPIO_Write_Pin(GPIOA,PIN_6,LOW);
+			Delay_us(10000-tempo);
+			tempo-=50;
+
+			if(tempo <= 0) break;
+		}
+	}
+}
+
+void botaoK1(){
+	GPIO_Write_Pin(GPIOA, PIN_6, LOW);  // D2 ON
+	GPIO_Write_Pin(GPIOA, PIN_7, LOW);
+
+	while(1){
+
+		uint16_t leitura = 0; //Cria uma Variável de 16 bits
+		//leitura = GPIOA->IDR & 1; //Atribuí o valor que está no registrador na variável leitura
+		leitura = GPIO_Read_Pin(GPIOE, PIN_3);// UTILIZANDO a biblioteca faz a mesma coisa que o de cima.
+		// -> Vai ler  o estado Atual do PINO3 da porta E;
+
+
+		if(leitura == 0){ //Se Leitura == 0, o botão está pressionado (Pull-up)
+			//Força uma Mudança de estado inicial
+			GPIO_Write_Pin(GPIOA, PIN_6, HIGH);
+			GPIO_Write_Pin(GPIOA, PIN_7, LOW);
+			Delay_ms(200);
+
+			while(GPIO_Read_Pin(GPIOE, PIN_3) == 0){
+			//HAL_GPIO_WritePin(GPIOA, GPIO_PIN_6,GPIO_PIN_RESET); // O LED Acende (3.3V).
+			GPIO_Toggle_Pin(GPIOA, PIN_6);
+			//inverte os estados dos pinos
+			GPIO_Toggle_Pin(GPIOA, PIN_7);
+			Delay_ms(200);
+
+
+			}
+		}else{ // Se leitura == 1 (Botão solto)
+			//Força os dois leds a apagarem
+			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_6,GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(GPIOA, GPIO_PIN_7,GPIO_PIN_RESET);
+		}
+	}
+}
+
+
+/* USER CODE END 0 */
+
+/**
+  * @brief  The application entry point.
+  * @retval int
+  */
+int tempLiga = 1000;
+int tempDesl = 0;
+
+
+int main(void)
+{
+
+  /* USER CODE BEGIN 1 */
+
+  /* USER CODE END 1 */
+
+  /* MCU Configuration--------------------------------------------------------*/
+
+  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
+  HAL_Init();
+
+  /* USER CODE BEGIN Init */
+
+  /* USER CODE END Init */
+
+  /* Configure the system clock */
+  SystemClock_Config();
+
+  /* USER CODE BEGIN SysInit */
+
+  /* USER CODE END SysInit */
+
+  /* Initialize all configured peripherals */
+  MX_GPIO_Init();
+  /* USER CODE BEGIN 2 */
+  Utility_Init(); //Permite a utilização das funções da biblioteca
+  GPIO_Clock_Enable(GPIOA);
+  GPIO_Clock_Enable(GPIOE);// Liga o sinal de clock para o barramento do Portal A
+
+
+  // Configura os pinos PA6 e PA7 como Saídas Digitais (provavelmente para LEDs)
+  GPIO_Pin_Mode(GPIOA,PIN_6,OUTPUT);
+  GPIO_Pin_Mode(GPIOA,PIN_7,OUTPUT);
+  GPIO_Pin_Mode(GPIOA,PIN_0,INPUT);
+  GPIO_Pin_Mode(GPIOE,PIN_4,INPUT);
+  GPIO_Pin_Mode(GPIOE,PIN_3,INPUT);//Pino PA0 para entrada Digital
+
+  // Ativa o resistor interno de PULL-DOWN no PA0.
+  // Isso garante 0V quando o botão está solto, já que seu botão injeta 3V3 quando apertado.
+  GPIO_Resistor_Enable(GPIOA, PIN_0, PULL_DOWN);
+  GPIO_Resistor_Enable(GPIOE, PIN_4, PULL_UP);
+  GPIO_Resistor_Enable(GPIOA, PIN_3, PULL_UP);
+
+
+  GPIO_Write_Pin(GPIOA, PIN_6,HIGH);
+  GPIO_Write_Pin(GPIOA, PIN_7,HIGH);
+
+
+  // Configura a Interrupção Externa no pino 0 do GPIOA para disparar na borda de subida (RISING)
+  // Ou seja: o evento ocorre no exato momento em que você pressiona o botão (0 -> 1)
+//  EXTI_Config(EXTI0, GPIOA, RISING_EDGE);
+//  EXTI_Config(EXTI3, GPIOE, RISING_EDGE);
+//  EXTI_Config(EXTI4, GPIOE, RISING_EDGE);
+
+  // Avisa o núcleo do processador (NVIC) que ele deve aceitar e processar os alertas vindos da EXTI0
+//  NVIC_EnableIRQ(EXTI0_IRQn);
+//  NVIC_EnableIRQ(EXTI4_IRQn);
+//  NVIC_EnableIRQ(EXTI3_IRQn);
+  //atividade13_03(); faz com que o D2 e D3 apaguem simuntânamente de forma suave.
+  //botaoK1();
+
+
+  /* USER CODE END 2 */
+
+  /* Infinite loop */
+  /* USER CODE BEGIN WHILE */
+  while(1){
+
+	  GPIO_Write_Pin(GPIOA, PIN_6, HIGH);
+	        Delay_ms(150);
+	  GPIO_Write_Pin(GPIOA, PIN_6, LOW);
+	        Delay_ms(1500);
+
+
+	        GPIO_Write_Pin(GPIOA, PIN_6, HIGH);
+	        Delay_ms(150);
+	        GPIO_Write_Pin(GPIOA, PIN_6, LOW);
+	        Delay_ms(150);
+
+	        GPIO_Write_Pin(GPIOA, PIN_6, HIGH);
+	        Delay_ms(150);
+	        GPIO_Write_Pin(GPIOA, PIN_6, LOW);
+
+	        Delay_ms(2500);
+
+
+
+
+	  /* USER CODE BEGIN WHILE */
+  }
+  /* USER CODE BEGIN WHILE */
+
+    //int leiturak1 = 1;
+    //int sistema_ligado = 0; // 0 = Desligado, 1 = Ligado
+
+//    while (1)
+//    {
+//  	  leiturak1 = GPIO_Read_Pin(GPIOE,PIN_3);
+//
+//  	  if(leiturak1 == 0){ // Se o botão foi apertado
+//
+//  		  while(1){
+//  		  //if(sistema_ligado == 0){
+//  			  //sistema_ligado = 1; // Muda o estado para ligado
+//
+//  			  // Apita 2 vezes (Apenas quando liga)
+//  			  GPIO_Write_Pin(GPIOD, PIN_0, HIGH);
+//  			  Delay_ms(100);
+//  			  GPIO_Write_Pin(GPIOD, PIN_0, LOW);
+//  			  Delay_ms(100);
+//  			  GPIO_Write_Pin(GPIOD, PIN_0, HIGH);
+//  			  Delay_ms(100);
+//  			  GPIO_Write_Pin(GPIOD, PIN_0, LOW);
+//  			  Delay_ms(100);
+//  		  //}
+//  		  }
+//  		  if(1) {
+//  			  sistema_ligado = 0; // Muda o estado para desligado
+//
+//  			  // Garante que os LEDs fiquem apagados ao desligar
+//  			  GPIO_Write_Pin(GPIOA, PIN_6, LOW);
+//  			  GPIO_Write_Pin(GPIOA, PIN_7, LOW);
+//  		  }
+//
+//  		  // Trava para esperar você soltar o botão (evita múltiplos cliques super rápidos)
+//  		  while(GPIO_Read_Pin(GPIOE,PIN_3) == 0){
+//  			  Delay_ms(10);
+//  		  }
+//  	  }
+//
+//  	  // Pisca os LEDs continuamente apenas se o sistema estiver ligado
+//  	  if(sistema_ligado == 1){
+//  		  GPIO_Write_Pin(GPIOA, PIN_6, LOW);
+//  		  GPIO_Write_Pin(GPIOA, PIN_7, LOW);
+//  		  Delay_ms(100);
+//
+//  		  GPIO_Write_Pin(GPIOA, PIN_6, HIGH);
+//  		  GPIO_Write_Pin(GPIOA, PIN_7, HIGH);
+//  		  Delay_ms(100);
+//  	  }
+//
+//
+//
+//}
+  /* USER CODE END 3 */
+
+}
+
+/**
+  * @brief System Clock Configuration
+  * @retval None
+  */
+void SystemClock_Config(void)
+{
+  RCC_OscInitTypeDef RCC_OscInitStruct = {0};
+  RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
+
+  /** Configure the main internal regulator output voltage
+  */
+  __HAL_RCC_PWR_CLK_ENABLE();
+  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
+
+  /** Initializes the RCC Oscillators according to the specified parameters
+  * in the RCC_OscInitTypeDef structure.
+  */
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+  RCC_OscInitStruct.PLL.PLLM = 4;
+  RCC_OscInitStruct.PLL.PLLN = 168;
+  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
+  RCC_OscInitStruct.PLL.PLLQ = 4;
+  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Initializes the CPU, AHB and APB buses clocks
+  */
+  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
+                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
+  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
+  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
+  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
+
+  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_5) != HAL_OK)
+  {
+    Error_Handler();
+  }
+}
+
+/**
+  * @brief GPIO Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_GPIO_Init(void)
+{
+  /* USER CODE BEGIN MX_GPIO_Init_1 */
+
+  /* USER CODE END MX_GPIO_Init_1 */
+
+  /* GPIO Ports Clock Enable */
+  __HAL_RCC_GPIOH_CLK_ENABLE();
+
+  /* USER CODE BEGIN MX_GPIO_Init_2 */
+
+  /* USER CODE END MX_GPIO_Init_2 */
+}
+
+/* USER CODE BEGIN 4 */
+
+
+/* USER CODE END 4 */
+
+/**
+  * @brief  This function is executed in case of error occurrence.
+  * @retval None
+  */
+void Error_Handler(void)
+{
+  /* USER CODE BEGIN Error_Handler_Debug */
+  /* User can add his own implementation to report the HAL error return state */
+  __disable_irq();
+  while (1)
+  {
+  }
+  /* USER CODE END Error_Handler_Debug */
+}
+#ifdef USE_FULL_ASSERT
+/**
+  * @brief  Reports the name of the source file and the source line number
+  *         where the assert_param error has occurred.
+  * @param  file: pointer to the source file name
+  * @param  line: assert_param error line source number
+  * @retval None
+  */
+void assert_failed(uint8_t *file, uint32_t line)
+{
+  /* USER CODE BEGIN 6 */
+  /* User can add his own implementation to report the file name and line number,
+     ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
+  /* USER CODE END 6 */
+}
+#endif /* USE_FULL_ASSERT */
